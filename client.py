@@ -147,7 +147,11 @@ class Client:
 
                 # if client wins, count it
                 if result == 3:
+                    self.print_winner()
                     self.wins += 1
+
+                elif result == 2:
+                    self.print_loser()
 
                 return False  # Stop loop
 
@@ -157,6 +161,34 @@ class Client:
             print(f"Error receiving data: {e}")
             return False
 
+    def print_winner(self):
+        print(r"""
+      __   __  ___   _   _     __        ______  _   _   _ 
+      \ \ / / / _ \ | | | |    \ \      / / __ \| \ | | | |
+       \ V / | | | || | | |     \ \ /\ / / |  | |  \| | | |
+        | |  | |_| || |_| |      \ V  V /| |  | | . ` | | |
+        |_|   \___/  \___/        \_/\_/  \____/|_| \_| |_|
+
+              .------.      .------.      
+              |A .   |      |K  .  |      
+              | / \  |      | /\   |      
+              |(_,_) |      | \/   |      
+              |  I   |      |  I   |      
+              `------'      `------'      
+           WINNER WINNER CHICKEN DINNER!
+           """)
+
+    def print_loser(self):
+        print(r"""
+      _____          __  __ ______    ______      ________ _____  
+     / ____|   /\   |  \/  |  ____|  / __ \ \    / /  ____|  __ \ 
+    | |  __   /  \  | \  / | |__    | |  | \ \  / /| |__  | |__) |
+    | | |_ | / /\ \ | |\/| |  __|   | |  | |\ \/ / |  __| |  _  / 
+    | |__| |/ ____ \| |  | | |____  | |__| | \  /  | |____| | \ \ 
+     \_____/_/    \_\_|  |_|______|  \____/   \/   |______|_|  \_\
+
+                      Better luck next time!
+           """)
 
 if __name__ == '__main__':
     client = Client()
