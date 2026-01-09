@@ -1,5 +1,5 @@
 import struct
-
+import socket
 
 class BlackjackProtocol:
     """
@@ -40,6 +40,23 @@ class BlackjackProtocol:
         if len(s) > BlackjackProtocol.MAX_NAME_LEN:
             s = s[:BlackjackProtocol.MAX_NAME_LEN]
         return s.encode('utf-8').ljust(32, b'\x00')
+
+    @staticmethod
+    def recv_all(sock: socket.socket, length: int) -> bytes:
+        """
+        Helper to ensure we get exactly 'length' bytes.
+        Loops until the buffer is full.
+        """
+        data = b''
+        while len(data) < length:
+            try:
+                chunk = sock.recv(length - len(data))
+                if not chunk:
+                    raise Exception("Socket connection broken")
+                data += chunk
+            except socket.error as e:
+                raise Exception(f"Socket error: {e}")
+        return data
 
 
 class ServerProtocol(BlackjackProtocol):
