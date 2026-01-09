@@ -107,7 +107,7 @@ class BlackjackGame:
         :return: True if more runs are left, False otherwise
         :rtype: bool
         """
-        return self.runs_left > 0
+        return self.runs_left >= 0
 
     def reset_game(self):
         """
