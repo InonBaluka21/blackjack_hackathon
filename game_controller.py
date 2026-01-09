@@ -2,8 +2,15 @@ from deck import Deck
 from deck import Card
 
 class BlackjackGame:
+    ROUND_ISNT_OVER = 0
+    TIE = 1
+    CLIENT_LOSE = 2
+    CLIENT_WIN = 3
+
     def __init__(self, num_of_runs=1):
+        self.rounds_num = num_of_runs
         self.runs_left = num_of_runs
+        self.wins_count = 0
         self.reset_game()
 
     def get_player_score(self):
@@ -72,25 +79,27 @@ class BlackjackGame:
         :rtype: int
         """
         if not self.is_game_over:
-            return 0  # game is not over
+            return BlackjackGame.ROUND_ISNT_OVER  # game is not over
 
-        # player busts (Loss)
+        # player busts (loss)
         if self.is_player_busted:
-            return 2
+            return BlackjackGame.CLIENT_LOSE
 
-        # dealer busts (Loss)
+        # dealer busts (win)
         if self.is_dealer_busted:
-            return 3
+            self.wins_count += 1
+            return BlackjackGame.CLIENT_WIN
 
         # compare scores
         client_total = self.get_player_score()
         dealer_total = self.get_dealer_score()
         if client_total > dealer_total:
-            return 3  # player wins
+            self.wins_count += 1
+            return BlackjackGame.CLIENT_WIN
         elif client_total < dealer_total:
-            return 2  # player loses
+            return BlackjackGame.CLIENT_LOSE
         else:
-            return 1  # tie
+            return BlackjackGame.TIE
     
     def has_more_runs(self):
         """
@@ -111,3 +120,6 @@ class BlackjackGame:
         self.is_dealer_busted = False
         self.is_game_over = False
         self.runs_left -= 1
+
+    def statistics_print(self):
+        print(f"Client finished playing {self.rounds_num} rounds, win rate: {self.wins_count/self.rounds_num:.2%}")
