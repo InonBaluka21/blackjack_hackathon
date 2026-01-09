@@ -30,14 +30,21 @@ class Client:
             try:
                 data, addr = udp_sock.recvfrom(1024)
 
+                # extract server IP address
+                # We use addr[0] because socket.recvfrom() returns a tuple: (data, address).
+                # 'address' itself is a tuple: (ip_address, port_number).
+                # We extract the IP from this header to ensure we connect back to the correct machine.
+                # Source: https://docs.python.org/3/library/socket.html#socket.socket.recvfrom
+                self.server_addr = addr[0]
+
                 # Try to unpack the offer
                 offer = ClientProtocol.unpack_offer(data)
                 if offer:
                     tcp_server_port, server_name = offer
-                    print(f"Received offer from {server_name} at {addr[0]}")
+                    print(f"Received offer from {server_name} at {self.server_addr}")
 
                     # Return the server's IP (from UDP packet) and TCP port (from payload)
-                    return addr[0], tcp_server_port
+                    return self.server_addr, tcp_server_port
             except Exception as e:
                 print(f"Error parsing UDP packet: {e}")
 
