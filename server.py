@@ -58,7 +58,7 @@ class Server:
         """
         try:
             # receive client request msg (client asks to start a game)
-            data = client_sock.recv(1024)
+            data = ServerProtocol.recv_all(client_sock, 38)
             if not data: return
 
             # parse request msg according to the protocol
@@ -90,7 +90,8 @@ class Server:
 
                 while not game.is_player_busted:
                     # read the client payload msg and figure their decision
-                    client_payload = client_sock.recv(1024)
+                    client_payload = ServerProtocol.recv_all(client_sock, 10)
+                    # client_payload = client_sock.recv(1024)
                     client_decision = ServerProtocol.unpack_decision(client_payload)
 
                     # stop waiting for client commands when they sk to stand
