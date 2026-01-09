@@ -146,6 +146,9 @@ class Server:
         udp_thread = threading.Thread(target=self.broadcast_offers, daemon=True)
         udp_thread.start()
 
+        # set a timeout of 1 second so accept() wakes up periodically
+        self.tcp_sock.settimeout(1.0)
+
         # accept TCP connections in the main thread
         while self.is_running:
             try:
@@ -156,6 +159,11 @@ class Server:
                 client_thread = threading.Thread(target=self.handle_client, args=(client_sock,))
                 client_thread.start()
 
+            except socket.timeout:
+                # handle the socket timeout by doing nothing
+                # it allows us to stop blocking the process by listening non-stop and still keep the same flow
+                # just loop back and check self.is_running again
+                pass
             except KeyboardInterrupt:
                 print("Closing connection")
                 self.is_running = False
