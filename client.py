@@ -2,6 +2,7 @@ import socket
 import sys
 import winsound
 import os
+import time
 from protocol import ClientProtocol
 from deck import Card
 
@@ -37,13 +38,15 @@ class Client:
         # Playing 'None' stops the current sound
         winsound.PlaySound(None, 0)
 
-    def find_server(self):
+    def collect_offers(self, duration=2.0):
         """
-        Listens for UDP broadcast offers to find a server.
-        Blocks until an offer is received.
+        Listens for UDP broadcasts for a specific duration.
+        Returns a dictionary of unique offers: { (ip, port): 'Server Name' }
         """
-        print("Client started, listening for offer requests...")
+        print(f"Listening for offers for {duration} seconds...")
+        udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
+        # Reuse port logic (Windows/Linux compat)
         udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         # Allow multiple clients on the same machine
@@ -55,13 +58,13 @@ class Client:
             # However, SO_REUSEADDR usually achieves the same result for this case.
             udp_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-        # Bind to the udp server port
         udp_sock.bind(("", self.udp_port))
+        udp_sock.settimeout(duration)  # Stop listening after 'duration' seconds
 
-        # set timeout so we don't block forever (when receiving bytes)
-        udp_sock.settimeout(1.0)
+        found_servers = {}  # Key: (IP, Port), Value: Name
+        start_time = time.time()
 
-        while True:
+        while time.time() - start_time < duration:
             try:
                 data, addr = udp_sock.recvfrom(1024)
 
@@ -70,30 +73,70 @@ class Client:
                 # 'address' itself is a tuple: (ip_address, port_number).
                 # We extract the IP from this header to ensure we connect back to the correct machine.
                 # Source: https://docs.python.org/3/library/socket.html#socket.socket.recvfrom
-                self.server_addr = addr[0]
+                server_ip = addr[0]
 
-                # Try to unpack the offer
                 offer = ClientProtocol.unpack_offer(data)
                 if offer:
-                    tcp_server_port, server_name = offer
-                    print(f"Received offer from {server_name} at {self.server_addr}")
+                    server_tcp_port, server_name = offer
+                    # Use a tuple (IP, Port) as the unique key
+                    key = (server_ip, server_tcp_port)
+                    if key not in found_servers:
+                        found_servers[key] = server_name
 
-                    # Return the server's IP (from UDP packet) and TCP port (from payload)
-                    return self.server_addr, tcp_server_port
-
-            # handle the timeout (just loop again)
             except socket.timeout:
-                continue
+                break  # Time is up
             except Exception as e:
-                print(f"Error parsing UDP packet: {e}")
+                print(f"UDP Error: {e}")
+
+        udp_sock.close()
+        return found_servers
+
+    def find_server(self):
+        """
+        Shows a menu of available servers and lets the user choose.
+        """
+        while True:
+            # 1. Collect offers
+            print("Client started, listening for offer requests...")
+            servers_dict = self.collect_offers()
+            server_list = list(servers_dict.items())  # Convert to list for indexing
+
+            # 2. Display Menu
+            print("\n--- Available Servers ---")
+            if not server_list:
+                print("[!] No servers found.")
+            else:
+                for idx, ((ip, port), name) in enumerate(server_list):
+                    print(f"[{idx + 1}] {name}  (Address: {ip}:{port})")
+
+            print("[R] Refresh (Scan again)")
+            print("-------------------------")
+
+            # 3. User Selection
+            choice = input("Select a server index or 'R' to refresh: ").strip().upper()
+
+            if choice == 'R':
+                continue  # Loop back to collect_offers
+
+            # Check if user entered a valid number
+            try:
+                idx = int(choice) - 1
+                if 0 <= idx < len(server_list):
+                    selected_key, selected_name = server_list[idx]
+                    server_ip, server_port = selected_key
+                    # print(f"Received offer from {selected_name} at {self.server_addr}")
+                    print(f"Connecting to '{selected_name}' at {server_ip}:{server_port}...")
+                    return server_ip, server_port
+                else:
+                    print("Invalid index. Try again.")
+            except ValueError:
+                print("Invalid input. Please enter a number or 'R'.")
 
     def connect_and_play(self, ip, port, rounds=1):
         """
         Connects to the server via TCP and manages the game session.
         """
         try:
-            self.start_music()
-
             self.tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.tcp_sock.connect((ip, port))
             print(f"Connected to server at {ip}:{port}")
@@ -104,6 +147,8 @@ class Client:
 
             # reset wins for this new session
             self.wins = 0
+
+            self.start_music()
 
             # 2. Loop for each round
             for round_num in range(1, rounds + 1):
