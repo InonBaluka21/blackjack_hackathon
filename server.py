@@ -1,6 +1,9 @@
 import socket
 import time
 import threading
+import subprocess
+import ipaddress
+import re
 
 from game_controller import BlackjackGame
 from protocol import ServerProtocol
@@ -24,24 +27,90 @@ class Server:
         print(f"Server started, listening on IP address {self.get_local_ip()}")
 
     def get_local_ip(self):
-        """Helper to print the actual IP (optional but useful)"""
+        """
+        Helper to print the actual IP (optional but useful)
+        Connects to Google DNS to let the OS
+        choose the active outgoing interface.
+        """
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.connect(("8.8.8.8", 80))
-            return s.getsockname()[0]
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
         except:
             return "127.0.0.1"
+
+    def get_broadcast_address(self, ip):
+        """
+        Robustly finds the broadcast address.
+        Fixes encoding crashes and supports university subnets.
+        """
+        if ip == "127.0.0.1":
+            return "127.0.0.1"
+
+        try:
+            # FIX 1: errors='ignore' prevents the crash on Hebrew/Special chars
+            output = subprocess.check_output("ipconfig", text=True, errors='ignore')
+            
+            mask = None
+            lines = output.splitlines()
+            
+            # 2. Parse output
+            for i, line in enumerate(lines):
+                if ip in line:
+                    # Look ahead a few lines for the mask
+                    for j in range(1, 4):
+                        if i + j < len(lines):
+                            target_line = lines[i+j]
+                            # We look for ANY line containing a mask-like pattern
+                            # This bypasses the language issue (Works on Hebrew Windows too)
+                            mask_match = re.search(r":\s*(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})", target_line)
+                            
+                            # Ensure it's not another IP (masks usually start with 255 or 0)
+                            if mask_match:
+                                candidate = mask_match.group(1)
+                                if candidate.startswith("255."):
+                                    mask = candidate
+                                    break
+                    if mask: 
+                        break
+
+            if not mask:
+                # FIX 2: Your specific University fallback
+                print(f"Warning: Could not auto-detect mask for {ip}. Using default.")
+                mask = "255.255.255.0"  # Standard home default
+
+            print(f"Detected Mask: {mask}")
+
+            # 3. Calculate Broadcast
+            net = ipaddress.IPv4Network(f"{ip}/{mask}", strict=False)
+            return str(net.broadcast_address)
+
+        except Exception as e:
+            print(f"Error calculating broadcast: {e}")
+            return "255.255.255.255" # Last resort fallback
 
     def broadcast_offers(self):
         """
         Runs in a background thread.
         Constantly announces the server's existence.
         """
+        # get the IP the OS prefers
+        my_ip = self.get_local_ip()
+
+        # calculate the correct broadcast address for THAT network
+        broadcast_ip = self.get_broadcast_address(my_ip)
+        #broadcast_ip = "255.255.255.255"
+        print(f"Server IP: {my_ip}")
+        print(f"Broadcasting to: {broadcast_ip}")
+
+
         # Create the packet ONCE (optimization)
         packet = ServerProtocol.pack_offer("It hurts when IP", self.tcp_port)
 
         # Destination: broadcast IP + client's listening port (13122)
-        dest = ('<broadcast>', 13122)
+        dest = (broadcast_ip, 13122)
 
         while self.is_running:
             try:
