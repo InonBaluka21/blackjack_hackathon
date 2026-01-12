@@ -50,24 +50,24 @@ class Server:
             return "127.0.0.1"
 
         try:
-            # FIX 1: errors='ignore' prevents the crash on Hebrew/Special chars
+            # errors='ignore' prevents the crash on Hebrew / special chars
             output = subprocess.check_output("ipconfig", text=True, errors='ignore')
             
             mask = None
             lines = output.splitlines()
             
-            # 2. Parse output
+            # parse output of ipconfig to find the subnet mask for the given IP
             for i, line in enumerate(lines):
                 if ip in line:
-                    # Look ahead a few lines for the mask
+                    # look ahead a few lines for the mask
                     for j in range(1, 4):
                         if i + j < len(lines):
                             target_line = lines[i+j]
-                            # We look for ANY line containing a mask-like pattern
-                            # This bypasses the language issue (Works on Hebrew Windows too)
+                            # we look for any line containing a mask-like pattern
+                            # this bypasses the language issue (works on Hebrew Windows too)
                             mask_match = re.search(r":\s*(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})", target_line)
                             
-                            # Ensure it's not another IP (masks usually start with 255 or 0)
+                            # ensure it's not another IP (masks usually start with 255 or 0)
                             if mask_match:
                                 candidate = mask_match.group(1)
                                 if candidate.startswith("255."):
@@ -77,19 +77,19 @@ class Server:
                         break
 
             if not mask:
-                # FIX 2: Your specific University fallback
+                # if we didn't find a mask, use the standard home default
                 print(f"Warning: Could not auto-detect mask for {ip}. Using default.")
-                mask = "255.255.255.0"  # Standard home default
+                mask = "255.255.255.0"
 
             print(f"Detected Mask: {mask}")
 
-            # 3. Calculate Broadcast
+            # calculate broadcast address
             net = ipaddress.IPv4Network(f"{ip}/{mask}", strict=False)
             return str(net.broadcast_address)
 
         except Exception as e:
             print(f"Error calculating broadcast: {e}")
-            return "255.255.255.255" # Last resort fallback
+            return "255.255.255.255" # last resort fallback
 
     def broadcast_offers(self):
         """
@@ -101,15 +101,15 @@ class Server:
 
         # calculate the correct broadcast address for THAT network
         broadcast_ip = self.get_broadcast_address(my_ip)
-        #broadcast_ip = "255.255.255.255"
+
         print(f"Server IP: {my_ip}")
         print(f"Broadcasting to: {broadcast_ip}")
 
 
-        # Create the packet ONCE (optimization)
+        # create the packet only once (optimization)
         packet = ServerProtocol.pack_offer("It hurts when IP", self.tcp_port)
 
-        # Destination: broadcast IP + client's listening port (13122)
+        # destination: broadcast IP + client's listening port (13122)
         dest = (broadcast_ip, 13122)
 
         while self.is_running:
