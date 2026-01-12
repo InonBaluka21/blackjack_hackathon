@@ -1,5 +1,7 @@
 import socket
 import sys
+import winsound
+import os
 from protocol import ClientProtocol
 from deck import Card
 
@@ -10,7 +12,30 @@ class Client:
         self.server_addr = None
         self.team_name = "It hurts when IP"
         self.wins = 0
+        self.music_file = "bg_music.wav"
 
+    def start_music(self):
+        """
+        Plays a wav file in the background (ASYNC) and loops it (LOOP).
+        """
+        if os.path.exists(self.music_file):
+            # SND_FILENAME = The sound is a filename
+            # SND_ASYNC    = Play in background (don't block code)
+            # SND_LOOP     = Repeat forever
+            try:
+                winsound.PlaySound(
+                    self.music_file,
+                    winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_LOOP
+                )
+            except Exception as e:
+                print(f"Audio error: {e}")
+
+    def stop_music(self):
+        """
+        Stops the currently playing sound.
+        """
+        # Playing 'None' stops the current sound
+        winsound.PlaySound(None, 0)
 
     def find_server(self):
         """
@@ -67,6 +92,8 @@ class Client:
         Connects to the server via TCP and manages the game session.
         """
         try:
+            self.start_music()
+
             self.tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.tcp_sock.connect((ip, port))
             print(f"Connected to server at {ip}:{port}")
@@ -101,6 +128,7 @@ class Client:
                 self.tcp_sock = None  # Reset socket
 
             self.server_addr = None
+            self.stop_music()
             print("Game finished. Connection closed.")
 
     def play_round(self, round_num):
@@ -122,7 +150,11 @@ class Client:
         # my_turn = True
         while round_active:
             print("Your options: [1] Hit  [2] Stand")
-            choice = int(input("Enter choice: "))
+            try:
+                choice = int(input("Enter choice: "))
+            except ValueError:
+                print("Please enter a number (1 or 2).")
+                continue  # skip to next loop iteration to ask again
 
             if choice == 1:
                 # Send HIT
