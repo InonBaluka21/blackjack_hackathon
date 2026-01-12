@@ -13,11 +13,37 @@ class BlackjackGame:
         self.wins_count = 0
         self.reset_game()
 
+    def _calculate_score(self, cards):
+        """
+        Calculates score with 'Soft Ace' logic.
+        Ace = 11 usually.
+        If score > 21, Ace becomes 1.
+        """
+        score = 0
+        ace_count = 0
+
+        for card in cards:
+            score += card.value
+            if card.rank == 1:  # Ace
+                # score += 11
+                ace_count += 1
+            #elif card.rank > 10:  # Face cards
+            #    score += 10
+            #else:
+            #    score += card.rank
+
+        # If we busted and have Aces, reduce them from 11 to 1 (subtract 10)
+        while score > 21 and ace_count > 0:
+            score -= 10
+            ace_count -= 1
+
+        return score
+
     def get_player_score(self):
-        return sum(card.value for card in self.player_cards)
+        return self._calculate_score(self.player_cards)
 
     def get_dealer_score(self):
-        return sum(card.value for card in self.dealer_cards)
+        return self._calculate_score(self.dealer_cards)
 
     def player_hit(self):
         """

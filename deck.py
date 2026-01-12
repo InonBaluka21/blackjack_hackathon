@@ -3,6 +3,7 @@ import random
 class Card:
     # Suits Mapping
     SUIT_NAMES = {0: "Hearts", 1: "Diamonds", 2: "Clubs", 3: "Spades"}
+    SUIT_SIGNS = {0: "♥", 1: "♦", 2: "♣", 3: "♠"}
 
     # Rank Names (for printing)
     RANK_NAMES = {
@@ -19,9 +20,27 @@ class Card:
         if self.rank > 10:
             return 10
         # currently supporting ace as 1, remove the comments to treat it as 11
-        #if self.rank == 1:
-        #    return 11  # Simplified Ace (Assignment says Ace is 11)
+        if self.rank == 1:
+            return 11  # Simplified Ace (Assignment says Ace is 11)
         return self.rank
+
+    def ascii_art(self):
+        """Returns a list of strings representing the card visually."""
+        # standard Blackjack abbreviations
+        rank_str = self.RANK_NAMES.get(self.rank, str(self.rank))[0]
+
+        # suit mapping
+        suit_sym = self.SUIT_SIGNS.get(self.suit, "?")
+
+        # Create the art
+        # The logic {rank_str:<2} aligns the text to left/right for 10s (2 digits) vs single digits
+        return [
+            " .------. ",
+            f" |{rank_str:<2}    | ",
+            f" |  {suit_sym}   | ",
+            f" |    {rank_str:>2}| ",
+            " '------' "
+        ]
 
     def __str__(self):
         """Returns 'King of Hearts' or '5 of Spades'."""

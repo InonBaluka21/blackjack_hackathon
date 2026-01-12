@@ -245,10 +245,20 @@ class Client:
             # unpack msg to extract its info
             result, rank, suit = ClientProtocol.unpack_game_state(data)
             card = Card(rank, suit)
-            if is_player:
-                print(f"You got: {card}. Value: {card.value}")
-            else:
-                print(f"Dealer got: {card}. Value: {card.value}")
+            # --- ASCII ART PRINTING ---
+            who = "You" if is_player else "Dealer"
+            print(f"\n{who} got:")
+
+            # Print the 5 lines of the card
+            try:
+                for line in card.ascii_art():
+                    print(line)
+            except UnicodeEncodeError:
+                # Fallback if terminal doesn't support hearts/spades
+                print(f"[ {card} ]")
+
+            # print(f"Value: {card.value}")
+            # --------------------------
 
             # when game is over
             if result != 0:
