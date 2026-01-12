@@ -225,7 +225,7 @@ class Server:
                 print(f"New connection from {addr}")
 
                 # create a thread for the new client so we can accept others
-                client_thread = threading.Thread(target=self.handle_client, args=(client_sock,))
+                client_thread = threading.Thread(target=self.handle_client, args=(client_sock,), daemon=True)
                 client_thread.start()
 
             except socket.timeout:
